@@ -1,0 +1,46 @@
+name: Discord Alerts
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+      - feature/**
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+jobs:
+  notify-discord:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Discord notification
+        shell: pwsh
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          WORKFLOW_NAME: Discord Alerts
+          WORKFLOW_STATUS: started
+          REPOSITORY_NAME: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          $branchName = if ($env:GITHUB_HEAD_REF) { $env:GITHUB_HEAD_REF } else { $env:GITHUB_REF_NAME }
+          $body = @{
+            username   = "GitHub Actions"
+            avatar_url = "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+            content    = @"
+          Repositorio: $env:REPOSITORY_NAME
+          Workflow: $env:WORKFLOW_NAME
+          Status: $env:WORKFLOW_STATUS
+          Branch: $branchName
+          Evento: $env:EVENT_NAME
+          Execucao: $env:RUN_URL
+          "@
+          } | ConvertTo-Json -Depth 3
+
+          Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK -Method Post -ContentType "application/json" -Body $body
