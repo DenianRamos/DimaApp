@@ -1,12 +1,18 @@
 name: Discord Alerts
 
 on:
-  workflow_run:
-    workflows:
-      - CI
-      - CD
+  push:
+    branches:
+      - main
+      - master
+      - develop
+      - feature/**
+  pull_request:
     types:
-      - completed
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
 
 jobs:
   notify-discord:
@@ -17,12 +23,12 @@ jobs:
       - name: Send Discord notification
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
-          WORKFLOW_STATUS: ${{ github.event.workflow_run.conclusion }}
-          BRANCH_NAME: ${{ github.event.workflow_run.head_branch }}
+          WORKFLOW_NAME: Discord Alerts
+          WORKFLOW_STATUS: started
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
           REPOSITORY_NAME: ${{ github.repository }}
-          RUN_URL: ${{ github.event.workflow_run.html_url }}
-          EVENT_NAME: ${{ github.event.workflow_run.event }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           python <<'PY'
           import json
