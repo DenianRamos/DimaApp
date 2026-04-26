@@ -1,0 +1,54 @@
+name: Discord Alerts
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+      - CD
+    types:
+      - completed
+
+jobs:
+  notify-discord:
+    if: ${{ secrets.DISCORD_WEBHOOK != '' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Discord notification
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          WORKFLOW_STATUS: ${{ github.event.workflow_run.conclusion }}
+          BRANCH_NAME: ${{ github.event.workflow_run.head_branch }}
+          REPOSITORY_NAME: ${{ github.repository }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          EVENT_NAME: ${{ github.event.workflow_run.event }}
+        run: |
+          python <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          payload = {
+              "username": "GitHub Actions",
+              "avatar_url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
+              "content": (
+                  f"Repositorio: {os.environ['REPOSITORY_NAME']}\n"
+                  f"Workflow: {os.environ['WORKFLOW_NAME']}\n"
+                  f"Status: {os.environ['WORKFLOW_STATUS']}\n"
+                  f"Branch: {os.environ['BRANCH_NAME']}\n"
+                  f"Evento: {os.environ['EVENT_NAME']}\n"
+                  f"Execucao: {os.environ['RUN_URL']}"
+              ),
+          }
+
+          request = urllib.request.Request(
+              os.environ["DISCORD_WEBHOOK"],
+              data=json.dumps(payload).encode("utf-8"),
+              headers={"Content-Type": "application/json"},
+              method="POST",
+          )
+
+          with urllib.request.urlopen(request) as response:
+              print(f"Discord response: {response.status}")
+          PY

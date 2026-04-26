@@ -7,7 +7,6 @@ on:
       - master
       - develop
       - feature/**
-  pull_request:
 
 jobs:
   publish-artifact:
@@ -22,8 +21,11 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
+      - name: Restore
+        run: dotnet restore Dima.sln
+
       - name: Publish application
-        run: dotnet publish Dima.Api/Dima.Api.csproj --configuration Release --output ./publish
+        run: dotnet publish Dima.Api/Dima.Api.csproj --configuration Release --no-restore --output ./publish
 
       - name: Upload published artifact
         uses: actions/upload-artifact@v4
