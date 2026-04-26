@@ -20,40 +20,27 @@ jobs:
 
     steps:
       - name: Send Discord notification
+        shell: pwsh
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           WORKFLOW_NAME: Discord Alerts
           WORKFLOW_STATUS: started
-          BRANCH_NAME: ${{ github.ref_name }}
           REPOSITORY_NAME: ${{ github.repository }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
-          python <<'PY'
-          import json
-          import os
-          import urllib.request
+          $branchName = if ($env:GITHUB_HEAD_REF) { $env:GITHUB_HEAD_REF } else { $env:GITHUB_REF_NAME }
+          $body = @{
+            username   = "GitHub Actions"
+            avatar_url = "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+            content    = @"
+          Repositorio: $env:REPOSITORY_NAME
+          Workflow: $env:WORKFLOW_NAME
+          Status: $env:WORKFLOW_STATUS
+          Branch: $branchName
+          Evento: $env:EVENT_NAME
+          Execucao: $env:RUN_URL
+          "@
+          } | ConvertTo-Json -Depth 3
 
-          payload = {
-              "username": "GitHub Actions",
-              "avatar_url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
-              "content": (
-                  f"Repositorio: {os.environ['REPOSITORY_NAME']}\n"
-                  f"Workflow: {os.environ['WORKFLOW_NAME']}\n"
-                  f"Status: {os.environ['WORKFLOW_STATUS']}\n"
-                  f"Branch: {os.environ['BRANCH_NAME']}\n"
-                  f"Evento: {os.environ['EVENT_NAME']}\n"
-                  f"Execucao: {os.environ['RUN_URL']}"
-              ),
-          }
-
-          request = urllib.request.Request(
-              os.environ["DISCORD_WEBHOOK"],
-              data=json.dumps(payload).encode("utf-8"),
-              headers={"Content-Type": "application/json"},
-              method="POST",
-          )
-
-          with urllib.request.urlopen(request) as response:
-              print(f"Discord response: {response.status}")
-          PY
+          Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK -Method Post -ContentType "application/json" -Body $body
